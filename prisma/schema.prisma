@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserProfile {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  name              String
+  totalHours        Int      @default(140)
+  picHours          Int      @default(75)
+  ratings           String[] @default(["CPL", "MEP", "IR", "SEP"])
+  languages         Json
+  baseLocation      String   @default("Europe")
+  targetRegions     String[] @default(["Europe", "Africa"])
+  openToAllTypes    Boolean  @default(true)
+  jobTypes          String[] @default(["airlines", "charter", "cargo", "air_ambulance", "flight_instruction", "ferry_flights"])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  jobs              JobListing[]
+  emailDigests      EmailDigest[]
+}
+
+model JobListing {
+  id              String   @id @default(cuid())
+  title           String
+  company         String?
+  location        String?
+  aircraftType    String?
+  description     String?
+  requirements    String?
+  salary          String?
+  postedDate      DateTime?
+  applicationUrl  String?
+  source          String
+  sourceUrl       String?
+  matchScore      Int?
+  matchCategory   String?  // "PERFECT_MATCH", "PRIORITY", "NOT_SUITABLE"
+  aiNotes         String?
+  status          String   @default("new") // "new", "applied", "pending", "interview", "rejected"
+  isProcessed     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  userProfileId   String
+  userProfile     UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  
+  @@unique([source, sourceUrl])
+}
+
+model EmailDigest {
+  id              String   @id @default(cuid())
+  sentAt          DateTime @default(now())
+  totalJobs       Int
+  newJobs         Int
+  perfectMatches  Int
+  priorityJobs    Int
+  notSuitable     Int
+  summary         String?
+  
+  userProfileId   String
+  userProfile     UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
