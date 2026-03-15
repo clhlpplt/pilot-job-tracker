@@ -16,7 +16,7 @@ A professional web application for tracking aviation job opportunities, built sp
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Radix UI
 - **Backend**: Next.js API routes, Prisma ORM
 - **Database**: PostgreSQL
-- **AI**: OpenAI GPT-3.5-turbo for job scoring
+- **AI**: Groq Llama 3.3 70B Versatile for job scoring
 - **Email**: Resend for daily digests
 - **Deployment**: Vercel with cron jobs
 
@@ -44,8 +44,8 @@ Required environment variables:
 # Database
 DATABASE_URL="postgresql://username:password@localhost:5432/pilot_job_tracker"
 
-# OpenAI API for AI scoring
-OPENAI_API_KEY="your-openai-api-key"
+# Groq API for AI scoring
+GROQ_API_KEY="your-groq-api-key"
 
 # Resend for email delivery
 RESEND_API_KEY="your-resend-api-key"
@@ -252,7 +252,7 @@ Edit the HTML template in `src/lib/email-service.ts` to match your preferred sty
 1. **Jobs not appearing**: Check Vercel function logs for scraping errors
 2. **Emails not sending**: Verify Resend API key and domain configuration
 3. **Database connection errors**: Ensure `DATABASE_URL` is correct and accessible
-4. **AI scoring failing**: Check OpenAI API key and quota
+4. **AI scoring failing**: Check Groq API key and quota
 
 ### Debug Mode
 

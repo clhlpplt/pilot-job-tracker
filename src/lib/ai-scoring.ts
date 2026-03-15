@@ -1,8 +1,8 @@
-import OpenAI from 'openai'
+import Groq from 'groq-sdk'
 import { JobListing } from './scrapers'
 
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const groq = process.env.GROQ_API_KEY ? new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 }) : null
 
 export interface UserProfile {
@@ -26,8 +26,8 @@ export class JobScorer {
   private static readonly MAX_HOURS_THRESHOLD = 500
 
   static async scoreJob(job: JobListing, profile: UserProfile): Promise<JobScore> {
-    if (!openai) {
-      // Fallback scoring when OpenAI is not available
+    if (!groq) {
+      // Fallback scoring when Groq is not available
       if (this.requiresMoreThan500Hours(job)) {
         return {
           score: 0,
@@ -51,8 +51,7 @@ export class JobScorer {
       }
     }
 
-    const prompt = `
-You are an expert aviation career advisor. Evaluate this pilot job listing against the candidate's profile:
+    const prompt = `You are an expert aviation career advisor. Evaluate this pilot job listing against the candidate's profile:
 
 CANDIDATE PROFILE:
 - Total Flight Hours: ${profile.totalHours}
@@ -85,12 +84,11 @@ Respond with a JSON object containing:
   "score": 0-100,
   "category": "PERFECT_MATCH" | "PRIORITY" | "NOT_SUITABLE",
   "notes": "Brief explanation of why this job is or isn't a good fit"
-}
-`
+}`
 
     try {
-      const response = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+      const response = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
@@ -103,11 +101,12 @@ Respond with a JSON object containing:
         ],
         temperature: 0.3,
         max_tokens: 300,
+        response_format: { type: "json_object" }
       })
 
       const content = response.choices[0]?.message?.content
       if (!content) {
-        throw new Error('No response from OpenAI')
+        throw new Error('No response from Groq')
       }
 
       const result = JSON.parse(content)
