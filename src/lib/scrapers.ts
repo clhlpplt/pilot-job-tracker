@@ -16,241 +16,361 @@ export interface JobListing {
 }
 
 export class JobScraper {
-  private static async fetchPage(url: string): Promise<string> {
+  private static async fetchRSS(url: string): Promise<string> {
     try {
       const response = await axios.get(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          'User-Agent': 'Mozilla/5.0 (compatible; JobBot/1.0; +https://pilot-job-tracker.vercel.app)',
+          'Accept': 'application/rss+xml, application/xml, text/xml',
+          'Accept-Language': 'en-US,en;q=0.9',
         },
-        timeout: 10000
+        timeout: 15000
       })
       return response.data
     } catch (error) {
-      console.error(`Error fetching ${url}:`, error)
+      console.error(`Error fetching RSS from ${url}:`, error)
       return ''
     }
   }
 
-  static async scrapePilotCareerCentre(): Promise<JobListing[]> {
-    const jobs: JobListing[] = []
+  private static parseXMLContent(xmlContent: string): any {
     try {
-      const html = await this.fetchPage('https://pilotcareercentre.com/jobs')
-      const $ = cheerio.load(html)
-      
-      $('.job-listing').each((index, element) => {
-        const $el = $(element)
-        const title = $el.find('.job-title').text().trim()
-        const company = $el.find('.company-name').text().trim()
-        const location = $el.find('.location').text().trim()
-        const sourceUrl = $el.find('a').attr('href') || ''
-        
-        if (title && sourceUrl) {
-          jobs.push({
-            title,
-            company,
-            location,
-            source: 'pilotcareercentre.com',
-            sourceUrl: `https://pilotcareercentre.com${sourceUrl}`
-          })
-        }
-      })
+      const $ = cheerio.load(xmlContent, { xmlMode: true })
+      return $
     } catch (error) {
-      console.error('Error scraping PilotCareerCentre:', error)
+      console.error('Error parsing XML:', error)
+      return null
     }
-    return jobs
   }
 
-  static async scrapePilotJobsNetwork(): Promise<JobListing[]> {
-    const jobs: JobListing[] = []
-    try {
-      const html = await this.fetchPage('https://pilotjobsnetwork.com/jobs')
-      const $ = cheerio.load(html)
-      
-      $('.job-item').each((index, element) => {
-        const $el = $(element)
-        const title = $el.find('.job-title').text().trim()
-        const company = $el.find('.airline').text().trim()
-        const location = $el.find('.base').text().trim()
-        const aircraftType = $el.find('.aircraft').text().trim()
-        const sourceUrl = $el.find('a').attr('href') || ''
-        
-        if (title && sourceUrl) {
-          jobs.push({
-            title,
-            company,
-            location,
-            aircraftType,
-            source: 'pilotjobsnetwork.com',
-            sourceUrl
-          })
-        }
-      })
-    } catch (error) {
-      console.error('Error scraping PilotJobsNetwork:', error)
-    }
-    return jobs
+  private static extractTextFromHTML(html: string): string {
+    const $ = cheerio.load(html)
+    return $.text().trim()
   }
 
-  static async scrapeFlyingWay(): Promise<JobListing[]> {
-    const jobs: JobListing[] = []
-    try {
-      const html = await this.fetchPage('https://flyingway.com/jobs')
-      const $ = cheerio.load(html)
-      
-      $('.job-post').each((index, element) => {
-        const $el = $(element)
-        const title = $el.find('h3').text().trim()
-        const company = $el.find('.company').text().trim()
-        const location = $el.find('.location').text().trim()
-        const sourceUrl = $el.find('a').attr('href') || ''
-        
-        if (title && sourceUrl) {
-          jobs.push({
-            title,
-            company,
-            location,
-            source: 'flyingway.com',
-            sourceUrl: sourceUrl.startsWith('http') ? sourceUrl : `https://flyingway.com${sourceUrl}`
-          })
-        }
-      })
-    } catch (error) {
-      console.error('Error scraping FlyingWay:', error)
+  private static extractLocation(text: string): string | null {
+    // Common location patterns
+    const locationPatterns = [
+      /(?:Location|Base|Based in?):\s*([A-Za-z\s,]+)/i,
+      /(?:in|at)\s+([A-Za-z\s,]+(?:\s+(?:USA|UK|Germany|France|Italy|Spain|Netherlands|Poland|Belgium|Austria|Switzerland|Sweden|Norway|Denmark|Finland|Portugal|Ireland|Greece|Czech|Hungary|Romania|Bulgaria|Croatia|Slovakia|Slovenia|Estonia|Latvia|Lithuania|Cyprus|Malta|Luxembourg)))/i,
+      /([A-Za-z\s,]+(?:\s+(?:USA|UK|Germany|France|Italy|Spain|Netherlands|Poland|Belgium|Austria|Switzerland|Sweden|Norway|Denmark|Finland|Portugal|Ireland|Greece|Czech|Hungary|Romania|Bulgaria|Croatia|Slovakia|Slovenia|Estonia|Latvia|Lithuania|Cyprus|Malta|Luxembourg)))/i,
+    ]
+
+    for (const pattern of locationPatterns) {
+      const match = text.match(pattern)
+      if (match && match[1]) {
+        return match[1].trim()
+      }
     }
-    return jobs
+
+    // Check for common aviation hubs
+    const hubs = ['London', 'Paris', 'Frankfurt', 'Amsterdam', 'Madrid', 'Rome', 'Dublin', 'Vienna', 'Brussels', 'Warsaw', 'Prague', 'Budapest', 'Bucharest', 'Athens', 'Lisbon', 'Stockholm', 'Oslo', 'Copenhagen', 'Helsinki', 'Berlin', 'Munich', 'Manchester', 'Birmingham', 'Gatwick', 'Heathrow', 'Schiphol', 'Charles de Gaulle', 'Fiumicino', 'Barajas', 'Malpensa', 'Tegel', 'Zurich', 'Geneva']
+    
+    for (const hub of hubs) {
+      if (text.toLowerCase().includes(hub.toLowerCase())) {
+        return hub
+      }
+    }
+
+    return null
   }
 
-  static async scrapeAviationJobSearch(): Promise<JobListing[]> {
-    const jobs: JobListing[] = []
-    try {
-      const html = await this.fetchPage('https://aviationjobsearch.com/jobs/pilot')
-      const $ = cheerio.load(html)
-      
-      $('.job').each((index, element) => {
-        const $el = $(element)
-        const title = $el.find('.job-title').text().trim()
-        const company = $el.find('.company').text().trim()
-        const location = $el.find('.location').text().trim()
-        const salary = $el.find('.salary').text().trim()
-        const sourceUrl = $el.find('a').attr('href') || ''
-        
-        if (title && sourceUrl) {
-          jobs.push({
-            title,
-            company,
-            location,
-            salary,
-            source: 'aviationjobsearch.com',
-            sourceUrl: sourceUrl.startsWith('http') ? sourceUrl : `https://aviationjobsearch.com${sourceUrl}`
-          })
-        }
-      })
-    } catch (error) {
-      console.error('Error scraping AviationJobSearch:', error)
+  private static extractAircraftType(text: string): string | null {
+    const aircraftPatterns = [
+      /(A320|A318|A319|A321|A330|A340|A350|A380|B737|B747|B757|B767|B777|B787|B717|E190|E195|CRJ|ATR|Dash|Q400|Cessna|Piper|Beech|King Air|Cirrus|Embraer|Bombardier|Fokker|Saab|Dornier)/gi,
+      /(?:Aircraft|Type|Equipment):\s*([A-Za-z0-9\s-]+)/i,
+      /(?:fly|operate|rated on)\s+([A-Za-z0-9\s-]+)/i,
+    ]
+
+    for (const pattern of aircraftPatterns) {
+      const match = text.match(pattern)
+      if (match && match[1]) {
+        return match[1].trim()
+      }
     }
-    return jobs
+
+    return null
   }
 
-  static async scrapeEASA(): Promise<JobListing[]> {
-    const jobs: JobListing[] = []
-    try {
-      const html = await this.fetchPage('https://jobs.easa.europa.eu')
-      const $ = cheerio.load(html)
-      
-      $('.vacancy').each((index, element) => {
-        const $el = $(element)
-        const title = $el.find('.title').text().trim()
-        const location = $el.find('.location').text().trim()
-        const sourceUrl = $el.find('a').attr('href') || ''
-        
-        if (title && sourceUrl) {
-          jobs.push({
-            title,
-            location,
-            source: 'jobs.easa.europa.eu',
-            sourceUrl: sourceUrl.startsWith('http') ? sourceUrl : `https://jobs.easa.europa.eu${sourceUrl}`
-          })
-        }
-      })
-    } catch (error) {
-      console.error('Error scraping EASA:', error)
-    }
-    return jobs
+  private static isCPLJob(text: string): boolean {
+    const cplKeywords = [
+      'cpl',
+      'commercial pilot',
+      'commercial pilot license',
+      'first officer',
+      'co-pilot',
+      'second officer',
+      'flight deck',
+      'pilot position',
+      'airline pilot',
+      'commercial aviation',
+      'low hour',
+      'low-hour',
+      'entry level',
+      'junior pilot',
+      'type rating',
+      'tric',
+      'multi crew',
+      'multi-crew'
+    ]
+
+    const lowerText = text.toLowerCase()
+    return cplKeywords.some(keyword => lowerText.includes(keyword))
   }
 
-  static async scrapeLinkedIn(): Promise<JobListing[]> {
-    const jobs: JobListing[] = []
-    try {
-      const searchQuery = 'aviation pilot jobs Europe Africa'
-      const url = `https://www.linkedin.com/jobs/search?keywords=${encodeURIComponent(searchQuery)}&location=Europe&locationId=101282230&locationId=102095883`
-      const html = await this.fetchPage(url)
-      const $ = cheerio.load(html)
-      
-      $('.job-search-card').each((index, element) => {
-        const $el = $(element)
-        const title = $el.find('.job-search-card__title').text().trim()
-        const company = $el.find('.job-search-card__subtitle').text().trim()
-        const location = $el.find('.job-search-card__location').text().trim()
-        const sourceUrl = $el.find('a').attr('href') || ''
-        
-        if (title && sourceUrl) {
-          jobs.push({
-            title,
-            company,
-            location,
-            source: 'linkedin.com',
-            sourceUrl: sourceUrl.startsWith('http') ? sourceUrl : `https://www.linkedin.com${sourceUrl}`
-          })
-        }
-      })
-    } catch (error) {
-      console.error('Error scraping LinkedIn:', error)
-    }
-    return jobs
+  private static isLowHourFriendly(text: string): boolean {
+    const lowHourKeywords = [
+      'low hour',
+      'low-hour',
+      'entry level',
+      'junior',
+      'first officer',
+      'cpl required',
+      'cpl holders',
+      'fresh cpl',
+      'type rating provided',
+      'rating provided',
+      'no experience required',
+      'training provided',
+      'cadet',
+      'ab initio'
+    ]
+
+    const lowerText = text.toLowerCase()
+    return lowHourKeywords.some(keyword => lowerText.includes(keyword))
   }
 
-  static async scrapeIndeed(): Promise<JobListing[]> {
+  static async scrapePilotCareerCentreRSS(): Promise<JobListing[]> {
     const jobs: JobListing[] = []
     try {
-      const searchQuery = 'pilot jobs Europe Africa'
-      const url = `https://www.indeed.com/jobs?q=${encodeURIComponent(searchQuery)}`
-      const html = await this.fetchPage(url)
-      const $ = cheerio.load(html)
+      const xmlContent = await this.fetchRSS('https://pilotcareercentre.com/rss')
+      const $ = this.parseXMLContent(xmlContent)
       
-      '.job_seen_beacon'.split(',').forEach(selector => {
-        $(selector).each((index, element) => {
-          const $el = $(element)
-          const title = $el.find('.jobTitle').text().trim()
-          const company = $el.find('.companyName').text().trim()
-          const location = $el.find('.companyLocation').text().trim()
-          const sourceUrl = $el.find('a').attr('href') || ''
-          
-          if (title && sourceUrl) {
-            jobs.push({
-              title,
-              company,
-              location,
-              source: 'indeed.com',
-              sourceUrl: sourceUrl.startsWith('http') ? sourceUrl : `https://www.indeed.com${sourceUrl}`
-            })
-          }
+      if (!$) return jobs
+
+      $('item').each((index: number, element: any) => {
+        const $item = $(element)
+        const title = $item.find('title').text().trim()
+        const description = $item.find('description').text().trim()
+        const link = $item.find('link').text().trim()
+        const pubDate = $item.find('pubDate').text().trim()
+        
+        if (!title || !link) return
+        
+        // Only include CPL-related jobs
+        const fullText = `${title} ${description}`.toLowerCase()
+        if (!this.isCPLJob(fullText)) return
+        
+        // Skip jobs requiring high hours
+        if (fullText.includes('500 hours') || fullText.includes('1000 hours') || fullText.includes('1500 hours') || fullText.includes('atpl')) {
+          return
+        }
+
+        const cleanDescription = this.extractTextFromHTML(description)
+        const location = this.extractLocation(cleanDescription)
+        const aircraftType = this.extractAircraftType(cleanDescription)
+
+        jobs.push({
+          title,
+          description: cleanDescription.substring(0, 500),
+          location: location || undefined,
+          aircraftType: aircraftType || undefined,
+          postedDate: pubDate ? new Date(pubDate) : undefined,
+          applicationUrl: link,
+          source: 'pilotcareercentre.com',
+          sourceUrl: link
         })
       })
     } catch (error) {
-      console.error('Error scraping Indeed:', error)
+      console.error('Error scraping PilotCareerCentre RSS:', error)
     }
     return jobs
   }
 
-  static async scrapeAllSources(): Promise<JobListing[]> {
+  static async scrapeAviationJobSearchRSS(): Promise<JobListing[]> {
+    const jobs: JobListing[] = []
+    try {
+      const xmlContent = await this.fetchRSS('https://aviationjobsearch.com/rss')
+      const $ = this.parseXMLContent(xmlContent)
+      
+      if (!$) return jobs
+
+      $('item').each((index: number, element: any) => {
+        const $item = $(element)
+        const title = $item.find('title').text().trim()
+        const description = $item.find('description').text().trim()
+        const link = $item.find('link').text().trim()
+        const pubDate = $item.find('pubDate').text().trim()
+        
+        if (!title || !link) return
+        
+        // Only include pilot jobs
+        const fullText = `${title} ${description}`.toLowerCase()
+        if (!fullText.includes('pilot') && !this.isCPLJob(fullText)) return
+        
+        // Skip high hour requirements
+        if (fullText.includes('500 hours') || fullText.includes('1000 hours') || fullText.includes('1500 hours')) {
+          return
+        }
+
+        const cleanDescription = this.extractTextFromHTML(description)
+        const location = this.extractLocation(cleanDescription)
+        const aircraftType = this.extractAircraftType(cleanDescription)
+
+        jobs.push({
+          title,
+          description: cleanDescription.substring(0, 500),
+          location: location || undefined,
+          aircraftType: aircraftType || undefined,
+          postedDate: pubDate ? new Date(pubDate) : undefined,
+          applicationUrl: link,
+          source: 'aviationjobsearch.com',
+          sourceUrl: link
+        })
+      })
+    } catch (error) {
+      console.error('Error scraping AviationJobSearch RSS:', error)
+    }
+    return jobs
+  }
+
+  static async scrapeEASARSS(): Promise<JobListing[]> {
+    const jobs: JobListing[] = []
+    try {
+      const xmlContent = await this.fetchRSS('https://jobs.easa.europa.eu/rss')
+      const $ = this.parseXMLContent(xmlContent)
+      
+      if (!$) return jobs
+
+      $('item').each((index: number, element: any) => {
+        const $item = $(element)
+        const title = $item.find('title').text().trim()
+        const description = $item.find('description').text().trim()
+        const link = $item.find('link').text().trim()
+        const pubDate = $item.find('pubDate').text().trim()
+        
+        if (!title || !link) return
+        
+        // Only include aviation-related jobs
+        const fullText = `${title} ${description}`.toLowerCase()
+        if (!fullText.includes('pilot') && !fullText.includes('aviation') && !fullText.includes('flight')) return
+
+        const cleanDescription = this.extractTextFromHTML(description)
+        const location = this.extractLocation(cleanDescription)
+
+        jobs.push({
+          title,
+          description: cleanDescription.substring(0, 500),
+          location: location || undefined,
+          postedDate: pubDate ? new Date(pubDate) : undefined,
+          applicationUrl: link,
+          source: 'jobs.easa.europa.eu',
+          sourceUrl: link
+        })
+      })
+    } catch (error) {
+      console.error('Error scraping EASA RSS:', error)
+    }
+    return jobs
+  }
+
+  static async scrapeFlyingWayRSS(): Promise<JobListing[]> {
+    const jobs: JobListing[] = []
+    try {
+      const xmlContent = await this.fetchRSS('https://flyingway.com/feed')
+      const $ = this.parseXMLContent(xmlContent)
+      
+      if (!$) return jobs
+
+      $('item').each((index: number, element: any) => {
+        const $item = $(element)
+        const title = $item.find('title').text().trim()
+        const description = $item.find('description').text().trim()
+        const link = $item.find('link').text().trim()
+        const pubDate = $item.find('pubDate').text().trim()
+        
+        if (!title || !link) return
+        
+        // Only include pilot jobs
+        const fullText = `${title} ${description}`.toLowerCase()
+        if (!fullText.includes('pilot') && !this.isCPLJob(fullText)) return
+        
+        // Skip high hour requirements
+        if (fullText.includes('500 hours') || fullText.includes('1000 hours') || fullText.includes('1500 hours')) {
+          return
+        }
+
+        const cleanDescription = this.extractTextFromHTML(description)
+        const location = this.extractLocation(cleanDescription)
+        const aircraftType = this.extractAircraftType(cleanDescription)
+
+        jobs.push({
+          title,
+          description: cleanDescription.substring(0, 500),
+          location: location || undefined,
+          aircraftType: aircraftType || undefined,
+          postedDate: pubDate ? new Date(pubDate) : undefined,
+          applicationUrl: link,
+          source: 'flyingway.com',
+          sourceUrl: link
+        })
+      })
+    } catch (error) {
+      console.error('Error scraping FlyingWay RSS:', error)
+    }
+    return jobs
+  }
+
+  static async scrapeFlightJobsFeed(): Promise<JobListing[]> {
+    const jobs: JobListing[] = []
+    try {
+      // Flight International Jobs RSS
+      const xmlContent = await this.fetchRSS('https://www.flightglobal.com/jobs/rss')
+      const $ = this.parseXMLContent(xmlContent)
+      
+      if (!$) return jobs
+
+      $('item').each((index: number, element: any) => {
+        const $item = $(element)
+        const title = $item.find('title').text().trim()
+        const description = $item.find('description').text().trim()
+        const link = $item.find('link').text().trim()
+        const pubDate = $item.find('pubDate').text().trim()
+        
+        if (!title || !link) return
+        
+        // Only include pilot jobs
+        const fullText = `${title} ${description}`.toLowerCase()
+        if (!fullText.includes('pilot') && !this.isCPLJob(fullText)) return
+
+        const cleanDescription = this.extractTextFromHTML(description)
+        const location = this.extractLocation(cleanDescription)
+
+        jobs.push({
+          title,
+          description: cleanDescription.substring(0, 500),
+          location: location || undefined,
+          postedDate: pubDate ? new Date(pubDate) : undefined,
+          applicationUrl: link,
+          source: 'flightglobal.com',
+          sourceUrl: link
+        })
+      })
+    } catch (error) {
+      console.error('Error scraping FlightJobs RSS:', error)
+    }
+    return jobs
+  }
+
+  static async scrapeAllRSSFeeds(): Promise<JobListing[]> {
+    console.log('Starting RSS feed scraping...')
+    
     const scrapers = [
-      this.scrapePilotCareerCentre,
-      this.scrapePilotJobsNetwork,
-      this.scrapeFlyingWay,
-      this.scrapeAviationJobSearch,
-      this.scrapeEASA,
-      this.scrapeLinkedIn,
-      this.scrapeIndeed
+      this.scrapePilotCareerCentreRSS,
+      this.scrapeAviationJobSearchRSS,
+      this.scrapeEASARSS,
+      this.scrapeFlyingWayRSS,
+      this.scrapeFlightJobsFeed
     ]
 
     const results = await Promise.allSettled(
@@ -260,12 +380,14 @@ export class JobScraper {
     const allJobs: JobListing[] = []
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
+        console.log(`RSS Feed ${index + 1}: Found ${result.value.length} jobs`)
         allJobs.push(...result.value)
       } else {
-        console.error(`Scraper ${index} failed:`, result.reason)
+        console.error(`RSS Feed ${index + 1} failed:`, result.reason)
       }
     })
 
+    console.log(`Total jobs found from RSS feeds: ${allJobs.length}`)
     return allJobs
   }
 }

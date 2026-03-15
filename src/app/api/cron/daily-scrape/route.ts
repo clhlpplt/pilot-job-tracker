@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Scrape all job sources
     console.log('Scraping job sources...')
-    const scrapedJobs = await JobScraper.scrapeAllSources()
+    const scrapedJobs = await JobScraper.scrapeAllRSSFeeds()
     console.log(`Found ${scrapedJobs.length} job listings`)
 
     // Filter out existing jobs
