@@ -57,6 +57,16 @@ export class JobScraper {
     try {
       console.log(`🔍 Searching JSearch API for: "${query}" in countries: ${countries.join(', ')}`)
       
+      // Check if RAPIDAPI_KEY is available
+      const rapidApiKey = process.env.RAPIDAPI_KEY
+      if (!rapidApiKey) {
+        console.error('❌ RAPIDAPI_KEY is not defined in environment variables')
+        console.error('🔧 Available env vars:', Object.keys(process.env).filter(k => k.includes('RAPID') || k.includes('API')))
+        return []
+      }
+      
+      console.log('🔑 RAPIDAPI_KEY found, length:', rapidApiKey.length)
+
       const params = new URLSearchParams({
         query,
         page: '1',
@@ -72,18 +82,35 @@ export class JobScraper {
         params.append('countries', countries.join(','))
       }
 
-      const response = await axios.get<JSearchResponse>(`${this.RAPIDAPI_URL}?${params}`, {
+      const url = `${this.RAPIDAPI_URL}?${params}`
+      console.log('🌐 Request URL:', url)
+
+      const response = await axios.get<JSearchResponse>(url, {
         headers: {
-          'x-rapidapi-key': process.env.RAPIDAPI_KEY || '',
+          'x-rapidapi-key': rapidApiKey,
           'x-rapidapi-host': this.RAPIDAPI_HOST
         },
         timeout: 15000
       })
 
+      console.log(`📊 JSearch response status: ${response.status}`)
       console.log(`📊 JSearch response for "${query}": Found ${response.data.data.length} jobs`)
       return response.data.data
     } catch (error) {
-      console.error(`❌ Error searching JSearch for "${query}":`, error)
+      if (axios.isAxiosError(error)) {
+        console.error(`❌ AxiosError searching JSearch for "${query}":`)
+        console.error(`📡 Status: ${error.response?.status || 'No response'}`)
+        console.error(`📡 Status Text: ${error.response?.statusText || 'No status text'}`)
+        console.error(`📡 Response Data:`, error.response?.data || 'No response data')
+        console.error(`📡 Headers:`, error.response?.headers || 'No headers')
+        console.error(`📡 Request Config:`, {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        })
+      } else {
+        console.error(`❌ Error searching JSearch for "${query}":`, error)
+      }
       return []
     }
   }
@@ -217,12 +244,23 @@ export class JobScraper {
   }
 
   static async searchAllQueries(): Promise<JobListing[]> {
-    console.log('� Starting JSearch API job searching...')
+    console.log('🚀 Starting JSearch API job searching...')
     
-    if (!process.env.RAPIDAPI_KEY) {
+    // Debug environment variables
+    console.log('🔧 Environment check:')
+    console.log('📋 NODE_ENV:', process.env.NODE_ENV)
+    console.log('📋 Available env vars:', Object.keys(process.env))
+    
+    const rapidApiKey = process.env.RAPIDAPI_KEY
+    if (!rapidApiKey) {
       console.error('❌ RAPIDAPI_KEY not found in environment variables')
+      console.error('🔧 Please add RAPIDAPI_KEY to your environment variables')
+      console.error('📋 Expected env vars: RAPIDAPI_KEY, GROQ_API_KEY, DATABASE_URL, etc.')
       return []
     }
+    
+    console.log('🔑 RAPIDAPI_KEY found, length:', rapidApiKey.length)
+    console.log('🔑 RAPIDAPI_KEY starts with:', rapidApiKey.substring(0, 8) + '...')
 
     // Search queries for different regions and experience levels
     const searchQueries = [
