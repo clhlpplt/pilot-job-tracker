@@ -47,6 +47,9 @@ DATABASE_URL="postgresql://username:password@localhost:5432/pilot_job_tracker"
 # Groq API for AI scoring
 GROQ_API_KEY="your-groq-api-key"
 
+# RapidAPI for job searching
+RAPIDAPI_KEY="your-rapidapi-key"
+
 # Resend for email delivery
 RESEND_API_KEY="your-resend-api-key"
 RESEND_FROM_EMAIL="noreply@yourdomain.com"

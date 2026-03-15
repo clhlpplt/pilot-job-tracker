@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Search, Filter, ExternalLink, Plane, MapPin, Clock, Users } from 'lucide-react'
+import { ManualJobEntry } from '@/components/ManualJobEntry'
 
 interface Job {
   id: string
@@ -247,6 +248,9 @@ export default function JobDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Manual Job Entry */}
+        <ManualJobEntry onJobAdded={() => fetchJobs()} />
 
         {/* Jobs List */}
         <Card>
