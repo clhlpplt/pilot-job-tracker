@@ -3,6 +3,14 @@ import { prisma } from '@/lib/database'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if database is available
+    if (!prisma) {
+      return NextResponse.json({ 
+        error: 'Database not available',
+        message: 'DATABASE_URL not configured'
+      }, { status: 500 })
+    }
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const category = searchParams.get('category')
@@ -81,6 +89,14 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Check if database is available
+    if (!prisma) {
+      return NextResponse.json({ 
+        error: 'Database not available',
+        message: 'DATABASE_URL not configured'
+      }, { status: 500 })
+    }
+
     const body = await request.json()
     const { id, status } = body
 

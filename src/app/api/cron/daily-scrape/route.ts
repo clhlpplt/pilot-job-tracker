@@ -14,6 +14,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if database is available
+    if (!prisma) {
+      return NextResponse.json({ 
+        error: 'Database not available',
+        message: 'DATABASE_URL not configured'
+      }, { status: 500 })
+    }
+
     console.log('Starting daily job scraping process...')
 
     // Get or create user profile
